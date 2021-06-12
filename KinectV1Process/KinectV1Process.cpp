@@ -1,11 +1,9 @@
 // KinectV1Process.cpp : Defines the entry point for the console application.
 //
-
 #include "stdafx.h"
+#include "KinectToVR.h"
 #include "KinectV1Handler.h"
-#include <KinectToVR.h>
-#include <openvr.h>
-#include <Windows.h>
+#define _DEBUG
 
 // Logging Definitions
 INITIALIZE_EASYLOGGINGPP
@@ -46,9 +44,7 @@ int main(int argc, char* argv[])
 	init_logging();
 	HWND hWnd = GetConsoleWindow();
 	ShowWindow(hWnd, SW_SHOW);
-#ifndef _DEBUG
-	ShowWindow(hWnd, SW_HIDE);
-#endif
+
 	KinectV1Handler kinect;
 	KinectSettings::leftFootJointWithRotation = KVR::KinectJointType::AnkleLeft;
 	KinectSettings::rightFootJointWithRotation = KVR::KinectJointType::AnkleRight;

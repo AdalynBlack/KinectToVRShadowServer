@@ -167,7 +167,7 @@ void attemptInitialiseDebugDisplay(sf::Font& font, sf::Text& debugText)
 	// Global Debug Font
 #if _DEBUG
 	auto fontFileName = "arial.ttf";
-	LOG(DEBUG) << "Attemping Debug Font Load: " << fontFileName << '\n';
+	//LOG(DEBUG) << "Attemping Debug Font Load: " << fontFileName << '\n';
 	font.loadFromFile(fontFileName);
 	debugText.setFont(font);
 #endif
@@ -240,6 +240,8 @@ int checkK2Server()
 			CloseHandle(ServerStatusPipe);
 
 			std::string ServerString = ServerData;
+
+			printf(ServerString.c_str());
 
 			if (ServerString.find("10") != std::string::npos)
 			{

@@ -8,13 +8,13 @@ class LowPassFilter
 {
 public:
 
-	LowPassFilter::LowPassFilter() :
+	LowPassFilter() :
 		output(0),
 		ePow(0)
 	{
 	}
 
-	LowPassFilter::LowPassFilter(float iCutOffFrequency, float iDeltaTime) :
+	LowPassFilter(float iCutOffFrequency, float iDeltaTime) :
 		output(0),
 		ePow(1 - exp(-iDeltaTime * 2 * M_PI * iCutOffFrequency))
 	{
@@ -28,18 +28,18 @@ public:
 		}
 	}
 
-	float LowPassFilter::update(float input)
+	float update(float input)
 	{
 		return output += (input - output) * ePow;
 	}
 
-	float LowPassFilter::update(float input, float deltaTime, float cutoffFrequency)
+	float update(float input, float deltaTime, float cutoffFrequency)
 	{
 		reconfigureFilter(deltaTime, cutoffFrequency); //Changes ePow accordingly.
 		return output += (input - output) * ePow;
 	}
 
-	void LowPassFilter::reconfigureFilter(float deltaTime, float cutoffFrequency)
+	void reconfigureFilter(float deltaTime, float cutoffFrequency)
 	{
 		if (deltaTime <= 0)
 		{

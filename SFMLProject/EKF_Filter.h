@@ -5,7 +5,7 @@
 class KalmanFilter
 {
 public:
-	KalmanFilter::KalmanFilter(
+	KalmanFilter(
 		double dt,
 		const Eigen::MatrixXd& A,
 		const Eigen::MatrixXd& C,
@@ -19,11 +19,11 @@ public:
 		I.setIdentity();
 	}
 
-	KalmanFilter::KalmanFilter()
+	KalmanFilter()
 	{
 	}
 
-	void KalmanFilter::init(double t0, const Eigen::VectorXd& x0)
+	void init(double t0, const Eigen::VectorXd& x0)
 	{
 		x_hat = x0;
 		P = P0;
@@ -32,7 +32,7 @@ public:
 		initialized = true;
 	}
 
-	void KalmanFilter::init()
+	void init()
 	{
 		x_hat.setZero();
 		P = P0;
@@ -41,7 +41,7 @@ public:
 		initialized = true;
 	}
 
-	void KalmanFilter::update(const Eigen::VectorXd& y)
+	void update(const Eigen::VectorXd& y)
 	{
 		if (!initialized)
 			throw std::runtime_error("Filter is not initialized!");
@@ -56,7 +56,7 @@ public:
 		t += dt;
 	}
 
-	void KalmanFilter::update(const Eigen::VectorXd& y, double dt, const Eigen::MatrixXd A)
+	void update(const Eigen::VectorXd& y, double dt, const Eigen::MatrixXd A)
 	{
 		this->A = A;
 		this->dt = dt;

@@ -3,6 +3,7 @@
 #include "KinectV1Includes.h"
 #include "KinectHandlerBase.h"
 #include "KinectOrientationFilter.h"
+#include "../Networking.cpp"
 
 class KinectV1Handler : public KinectHandlerBase
 {
@@ -36,6 +37,8 @@ public:
 
 	HRESULT getStatusResult() override;
 	std::string statusResultString(HRESULT stat) override;
+
+	HRESULT netStatus();
 
 	void drawKinectData(sf::RenderWindow& win) override;
 	void drawKinectImageData(sf::RenderWindow& win) override;
@@ -76,4 +79,8 @@ private:
 
 	bool jointsUntracked(KVR::KinectJoint joint0, KVR::KinectJoint joint1, NUI_SKELETON_DATA data);
 	bool jointsInferred(KVR::KinectJoint joint0, KVR::KinectJoint joint1, NUI_SKELETON_DATA data);
+
+	HRESULT netGetNextFrame(NUI_SKELETON_FRAME*);
+
+	int initNetworking();
 };

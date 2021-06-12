@@ -13,7 +13,6 @@
 #include <SFML/Graphics/CircleShape.hpp>
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <KinectSettings.h>
-#include <VRHelper.h>
 #include <sfLine.h>
 #include <iostream>
 #include <KinectJoint.h>
@@ -41,6 +40,8 @@ LowPassFilter lowPassFilter[3][4] = {
 		LowPassFilter(7.1, 0.005)
 	}
 };
+
+static Networking networking;
 
 void KinectV1Handler::initOpenGL()
 {
@@ -81,9 +82,10 @@ void KinectV1Handler::initOpenGL()
 
 HRESULT KinectV1Handler::getStatusResult()
 {
-	if (kinectSensor)
+	return netStatus();
+	/*if (kinectSensor)
 		return kinectSensor->NuiStatus();
-	return E_NUI_NOTCONNECTED;
+	return E_NUI_NOTCONNECTED;*/
 }
 
 std::string KinectV1Handler::statusResultString(HRESULT stat)
@@ -103,7 +105,19 @@ std::string KinectV1Handler::statusResultString(HRESULT stat)
 	case E_NUI_NOTPOWERED: return "E_NUI_NOTPOWERED\nCheck that your adapter is lit up.\nIf it is, look in Device Manager under \"other devices\"\nand as a last resort, try reinstalling the Kinect drivers entirely.";
 	// case E_NUI_NOTREADY: return "E_NUI_NOTREADY There was some other unspecified error.";
 	case E_NUI_NOTREADY: return "E_NUI_NOTREADY\nTry reconnecting the USB port of the device or restarting your PC.\nIf it doesn't work, reinstall the Kinect for Windows SDK.";
+	case S_FALSE: return "S_FALSE\nClient not connected, please connect it";
 	default: return "Uh Oh undefined kinect error! " + std::to_string(stat);
+	}
+}
+
+HRESULT KinectV1Handler::netStatus()
+{
+	if (networking.connected)
+	{
+		return S_OK;
+	}
+	else {
+		return S_FALSE;
 	}
 }
 
@@ -128,11 +142,18 @@ void KinectV1Handler::update()
 {
 	if (isInitialised())
 	{
-		HRESULT kinectStatus = kinectSensor->NuiStatus();
+		HRESULT kinectStatus = netStatus(); //kinectSensor->NuiStatus();
+		printf("status: %d\n", kinectStatus);
 		if (kinectStatus == S_OK)
 		{
 			getKinectRGBData();
 			updateSkeletalData();
+		}
+		else {
+			printf("wait for client\n");
+			networking.waitForClient();
+			printf("client connected\n");
+			Sleep(1000);
 		}
 	}
 }
@@ -402,7 +423,7 @@ NUI_SKELETON_POSITION_INDEX KinectV1Handler::convertJoint(KVR::KinectJoint joint
 
 bool KinectV1Handler::initKinect()
 {
-	//Get a working Kinect Sensor
+	/*//Get a working Kinect Sensor
 	int numSensors = 0;
 	if (NuiGetSensorCount(&numSensors) < 0 || numSensors < 1)
 	{
@@ -419,7 +440,7 @@ bool KinectV1Handler::initKinect()
 		| NUI_INITIALIZE_FLAG_USES_SKELETON);
 	LOG_IF(FAILED(hr), ERROR) << "Kinect sensor failed to initialise!";
 	else
-		LOG(INFO) << "Kinect sensor opened successfully.";
+		LOG(INFO) << "Kinect sensor opened successfully.";*/
 	/*
 	kinectSensor->NuiImageStreamOpen(
 		NUI_IMAGE_TYPE_COLOR,               //Depth Camera or RGB Camera?
@@ -430,7 +451,7 @@ bool KinectV1Handler::initKinect()
 		&kinectRGBStream);
 
 	*/
-	kinectSensor->NuiImageStreamOpen(
+	/*kinectSensor->NuiImageStreamOpen(
 		NUI_IMAGE_TYPE_DEPTH_AND_PLAYER_INDEX, //Depth Camera or RGB Camera?
 		NUI_IMAGE_RESOLUTION_320x240, //Image Resolution
 		0, //Image stream flags, e.g. near mode
@@ -440,14 +461,17 @@ bool KinectV1Handler::initKinect()
 	kinectSensor->NuiSkeletonTrackingEnable(
 		nullptr,
 		NUI_SKELETON_TRACKING_FLAG_ENABLE_IN_NEAR_RANGE
-	);
+	);*/
 
-	return kinectSensor;
+	bool netErr = initNetworking() == 0;
+
+	return netErr;
 }
 
 void KinectV1Handler::getKinectRGBData()
 {
-	NUI_IMAGE_FRAME imageFrame{};
+	return; // The data from this function is not used, the only use I can think of is that it might be necessary to track properly, so it is *probably* unnecessary on the server
+	/*NUI_IMAGE_FRAME imageFrame{};
 	NUI_LOCKED_RECT LockedRect{};
 	if (acquireKinectFrame(imageFrame, kinectRGBStream, kinectSensor))
 	{
@@ -457,7 +481,7 @@ void KinectV1Handler::getKinectRGBData()
 	copyKinectPixelData(LockedRect, kinectImageData.get());
 	unlockKinectPixelData(texture);
 
-	releaseKinectFrame(imageFrame, kinectRGBStream, kinectSensor);
+	releaseKinectFrame(imageFrame, kinectRGBStream, kinectSensor);*/
 }
 
 bool KinectV1Handler::acquireKinectFrame(NUI_IMAGE_FRAME& imageFrame, HANDLE& rgbStream, INuiSensor*& sensor)
@@ -499,9 +523,34 @@ void KinectV1Handler::releaseKinectFrame(NUI_IMAGE_FRAME& imageFrame, HANDLE& rg
 
 static bool flip = false;
 
+int KinectV1Handler::initNetworking()
+{
+	LOG(INFO) << "Initializing Networking" << std::endl;
+	if (*networking.error_state == 0)
+	{
+		LOG(INFO) << "Searching for client" << std::endl;
+		networking.waitForClient();
+		return 0;
+	}
+	else
+	{
+		LOG(ERROR) << "Failed To Init Networking" << std::endl;
+		return -1;
+	}
+}
+
+HRESULT KinectV1Handler::netGetNextFrame(NUI_SKELETON_FRAME *frame)
+{
+	*frame = networking.getLatestSkeleton(*frame);//wait for next frame and yoink it
+	return S_OK;
+}
+
 void KinectV1Handler::updateSkeletalData()
 {
-	if (kinectSensor->NuiSkeletonGetNextFrame(0, &skeletonFrame) >= 0)
+	//if (kinectSensor->NuiSkeletonGetNextFrame(0, &skeletonFrame) >= 0)
+	//if (netGetNextFrame(&skeletonFrame) >= 0)
+	netGetNextFrame(&skeletonFrame);
+	if(true)
 	{
 		NUI_TRANSFORM_SMOOTH_PARAMETERS params;
 
@@ -518,9 +567,8 @@ void KinectV1Handler::updateSkeletalData()
 		params.fJitterRadius = 0.03f;
 		params.fPrediction = .25f;
 		*/
-		kinectSensor->NuiTransformSmooth(&skeletonFrame, &params); //Smooths jittery tracking
+		//kinectSensor->NuiTransformSmooth(&skeletonFrame, &params); //Smooths jittery tracking
 		NUI_SKELETON_DATA data;
-
 		for (int i = 0; i < NUI_SKELETON_COUNT; ++i)
 		{
 			NUI_SKELETON_TRACKING_STATE trackingState = skeletonFrame.SkeletonData[i].eTrackingState;
@@ -532,6 +580,7 @@ void KinectV1Handler::updateSkeletalData()
 				{
 					jointPositions[j] = skeletonFrame.SkeletonData[i].SkeletonPositions[j];
 				}
+				printf("\n");
 				NuiSkeletonCalculateBoneOrientations(&skeletonFrame.SkeletonData[i], boneOrientations);
 				rotFilter.update(boneOrientations);
 				break;
